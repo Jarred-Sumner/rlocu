@@ -15,6 +15,8 @@ Gem::Specification.new do |spec|
   spec.files         = `git ls-files`.split($/)
   spec.executables   = spec.files.grep(%r{^bin/}).map{ |f| File.basename(f) }
   spec.add_development_dependency('rspec')
-  spec.add_runtime_dependency('rest-client')
+  spec.add_runtime_dependency('faraday')
+  spec.add_runtime_dependency "activesupport"
+  spec.add_runtime_dependency('faraday-manual-cache')
   spec.require_paths = ["lib"]
 end

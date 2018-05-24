@@ -2,7 +2,8 @@
 module Rlocu
   RlocuError = Class.new(StandardError)
   class << self
-    attr_accessor :api_key
+    attr_accessor :api_key, :redis_host, :redis_db, :cache_ttl, :redis_port
+
     def configure
       yield self
     end

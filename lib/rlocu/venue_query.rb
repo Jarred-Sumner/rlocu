@@ -1,10 +1,18 @@
-require 'rest-client'
+require 'faraday'
 require 'json'
+require 'active_support/cache'
 
 module Rlocu
   class VenueQuery
     include Rlocu::QueryBuilder
     VenueQueryError = Class.new(StandardError)
+
+    def faraday_client
+      @faraday ||= Faraday.new do |faraday|
+          faraday.response :logger
+        faraday.adapter  Faraday.default_adapter
+      end
+    end
 
     attr_reader :return_fields
 
@@ -24,9 +32,19 @@ module Rlocu
       {api_key: Rlocu.api_key, fields: return_fields, venue_queries: query_conditions }.to_json
     end
 
+    def store
+      @store ||= ActiveSupport::Cache.lookup_store(:redis_store, { host: Rlocu.redis_host, port: Rlocu.redis_port, db: Rlocu.redis_db })
+    end
+
+    def store_key(url, data)
+      [url, data].join("_")
+    end
+
     def query
-      # TODO wrap this in a timeout
-      result = JSON.parse(RestClient.post(base_url, form_data))
+      body = store.fetch(store_key(base_url, form_data), expires_in: Rlocu.cache_ttl) do
+        faraday_client.post(base_url, form_data).body
+      end
+      result = JSON.parse(body)
       status = result['status']
       raise VenueQueryError.new("Query failed with status [#{status}] and http_status [#{result['http_status']}]") unless status == 'success'
       result['venues'].each.reduce([]) { |accum, venue| accum << Rlocu::Venue.new(venue) }
